@@ -12,50 +12,39 @@ data "azuread_domains" "default" {
   only_initial = true
 }
 
-resource "random_password" "password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
-# Create a new user
-resource "azuread_user" "local_user" {
-  user_principal_name = "az104-user1@${data.azuread_domains.default.domains[0].domain_name}"
-  display_name        = "az104-user1"
-  password            = random_password.password.result
-
-  account_enabled = true
-
-  job_title      = "IT Lab Administrator"
-  department     = "IT"
-  usage_location = "US"
-}
-
-# Create a new invitation
-resource "azuread_invitation" "external_invite" {
-  user_display_name  = "Volodymyr"
-  user_email_address = "volodymyr.fufalko.23@pnu.edu.ua"
-  redirect_url       = "https://myapplications.microsoft.com/?tenantid=3c9ba863-6ab9-4fe9-8883-621b7618203d"
-
-  message {
-    body = "Welcome to Azure and our group project!"
-  }
-}
-
-# resource "azuread_user" "external_user" {
-#   user_principal_name = "volodymyr.fufalko.23_pnu.edu.ua#EXT#@devfinkordgmail.onmicrosoft.com"
-#   display_name        = "Volodymyr"
-
-#   job_title      = "IT Lab Administrator"
-#   department     = "IT"
-#   usage_location = "US"
-# }
-
-output "local_user_password" {
-  value     = random_password.password.result
-  sensitive = true
-}
-
 output "domain_names" {
   value = data.azuread_domains.default.domains[0].domain_name
+}
+
+data "azuread_client_config" "current" {}
+
+data "azuread_user" "user1" {
+  user_principal_name = "az104-user1@${data.azuread_domains.default.domains[0].domain_name}"
+}
+
+data "azuread_user" "guest_user" {
+  user_principal_name = "volodymyr.fufalko.23_pnu.edu.ua#EXT#@${data.azuread_domains.default.domains[0].domain_name}"
+}
+
+# Create the Security Group
+resource "azuread_group" "it_lab_admins" {
+  display_name       = "IT Lab Administrators"
+  description        = "Administrators that manage the IT lab"
+  security_enabled   = true
+  assignable_to_role = false
+
+  # Static membership type
+  types = []
+
+  owners = [data.azuread_client_config.current.object_id]
+}
+
+resource "azuread_group_member" "member_user1" {
+  group_object_id  = azuread_group.it_lab_admins.object_id
+  member_object_id = data.azuread_user.user1.object_id
+}
+
+resource "azuread_group_member" "member_guest" {
+  group_object_id  = azuread_group.it_lab_admins.object_id
+  member_object_id = data.azuread_user.guest_user.object_id
 }
