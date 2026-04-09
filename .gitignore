@@ -1,0 +1,12 @@
+
+.terraform*
+*.tfstate*
+*tfvars
+stuff
+keys
+
+hashicorp
+
+*.tar*
+
+/envs/dev/splunk
