@@ -1,19 +1,35 @@
 
 terraform {
   required_providers {
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
     }
   }
 }
 
-data "azuread_domains" "default" {
-  only_initial = true
+provider "azurerm" {
+  features {}
 }
 
-output "domain_names" {
-  value = data.azuread_domains.default.domains[0].domain_name
+resource "azurerm_resource_group" "az104_rg3" {
+  name     = "az104-rg3"
+  location = "East US"
 }
 
+resource "azurerm_managed_disk" "az104_disk1" {
+  name                 = "az104-disk1"
+  location             = azurerm_resource_group.az104_rg3.location
+  resource_group_name  = azurerm_resource_group.az104_rg3.name
+  storage_account_type = "Standard_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = 32
 
+  tags = {
+    environment = "lab"
+  }
+}
+
+output "managed_disk_id" {
+  value = azurerm_managed_disk.az104_disk1.id
+}
