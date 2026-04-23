@@ -59,20 +59,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   admin_username      = "student"
   admin_password      = "Pa55w.rd1234"
 
-  custom_data = base64encode(<<-EOF
-    <powershell>
-    Install-WindowsFeature -name Web-Server -IncludeManagementTools
-    Remove-Item C:\inetpub\wwwroot\iisstart.htm
-    Add-Content -Path C:\inetpub\wwwroot\iisstart.htm -Value "Hello World from $env:computername"
-    New-Item -Path 'c:\inetpub\wwwroot' -Name 'image' -Itemtype 'Directory'
-    New-Item -Path 'c:\inetpub\wwwroot\image\' -Name 'iisstart.htm' -ItemType 'file'
-    Add-Content -Path 'C:\inetpub\wwwroot\image\iisstart.htm' -Value "Image from $env:computername"
-    New-Item -Path 'c:\inetpub\wwwroot' -Name 'video' -Itemtype 'Directory'
-    New-Item -Path 'c:\inetpub\wwwroot\video\' -Name 'iisstart.htm' -ItemType 'file'
-    Add-Content -Path 'C:\inetpub\wwwroot\video\iisstart.htm' -Value "Video from $env:computername"
-    </powershell>
-    EOF
-  )
+
 
   network_interface_ids = [azurerm_network_interface.nic[count.index].id]
 
@@ -87,6 +74,19 @@ resource "azurerm_windows_virtual_machine" "vm" {
     sku       = "2022-Datacenter"
     version   = "latest"
   }
+}
+
+resource "azurerm_virtual_machine_extension" "custom_script" {
+  count                = 2
+  name                 = "IIS-Setup"
+  virtual_machine_id   = azurerm_windows_virtual_machine.vm[count.index].id
+  publisher            = "Microsoft.Compute"
+  type                 = "CustomScriptExtension"
+  type_handler_version = "1.9"
+
+  settings = jsonencode({
+    "commandToExecute" = "powershell.exe Install-WindowsFeature -name Web-Server -IncludeManagementTools && powershell.exe remove-item 'C:\\inetpub\\wwwroot\\iisstart.htm' && powershell.exe Add-Content -Path 'C:\\inetpub\\wwwroot\\iisstart.htm' -Value $('Hello World from ' + $env:computername) && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot' -Name 'image' -Itemtype 'Directory' && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot\\image\\' -Name 'iisstart.htm' -ItemType 'file' && powershell.exe Add-Content -Path 'C:\\inetpub\\wwwroot\\image\\iisstart.htm' -Value $('Image from: ' + $env:computername) && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot' -Name 'video' -Itemtype 'Directory' && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot\\video\\' -Name 'iisstart.htm' -ItemType 'file' && powershell.exe Add-Content -Path 'C:\\inetpub\\wwwroot\\video\\iisstart.htm' -Value $('Video from: ' + $env:computername)"
+  })
 }
 
 
